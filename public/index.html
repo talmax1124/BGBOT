@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BG BOT Control Panel</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 600px;
+        margin: auto;
+        padding: 2rem;
+        background: #f0f2f5;
+      }
+
+      h1 {
+        margin-bottom: 1rem;
+      }
+
+      #statusMessage {
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        font-weight: bold;
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        transition: opacity 0.3s ease;
+      }
+
+      h2 {
+        color: #333;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 0.2rem;
+      }
+
+      form {
+        margin-bottom: 2rem;
+        background: #fff;
+        padding: 1rem;
+        border-radius: 6px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+      }
+
+      label {
+        display: block;
+        margin-top: 0.5rem;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.2rem;
+      }
+
+      button {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+
+      @media (max-width: 600px) {
+        body {
+          padding: 1rem;
+        }
+
+        input,
+        textarea,
+        select {
+          font-size: 1rem;
+        }
+
+        button {
+          width: 100%;
+          font-size: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BG BOT Control Panel</h1>
+
+    <div id="authButtons" style="margin-bottom: 1rem">
+      <a href="/auth/discord" id="loginBtn">
+        <button
+          style="
+            background: #5865f2;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+          "
+        >
+          Login with Discord
+        </button>
+      </a>
+      <a href="/logout" id="logoutBtn" style="margin-left: 1rem; display: none">
+        <button style="background: #dc3545; color: white">Logout</button>
+      </a>
+    </div>
+
+    <div id="userInfo" style="margin-bottom: 1rem"></div>
+
+    <div id="statusMessage"></div>
+
+    <div id="authContent" style="display: none">
+      <form id="qaForm">
+        <h2>Submit Q&A</h2>
+        <label for="question">Question:</label>
+        <input type="text" name="question" id="question" required />
+        <label for="answer">Answer:</label>
+        <textarea name="answer" id="answer" required></textarea>
+        <button type="submit">Submit Q&A</button>
+      </form>
+
+      <form id="commandForm">
+        <h2>Send Command</h2>
+        <label for="command">Command:</label>
+        <input type="text" name="command" id="command" required />
+        <label for="commandChannel">Select Channel:</label>
+        <select id="commandChannel"></select>
+        <button type="submit">Send Command</button>
+      </form>
+
+      <form id="renameForm">
+        <h2>Rename Command</h2>
+        <label for="oldName">Old Command Name:</label>
+        <input type="text" name="oldName" id="oldName" required />
+        <label for="newName">New Command Name:</label>
+        <input type="text" name="newName" id="newName" required />
+        <label for="renameChannel">Select Channel:</label>
+        <select id="renameChannel"></select>
+        <button type="submit">Rename Command</button>
+      </form>
+    </div>
+
+    <script>
+      async function postJSON(url, data) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        showStatus(json.status || json.error, !!json.error);
+      }
+
+      async function loadChannels() {
+        const res = await fetch("/channels");
+        const channels = await res.json();
+
+        const commandSelect = document.getElementById("commandChannel");
+        const renameSelect = document.getElementById("renameChannel");
+        [commandSelect, renameSelect].forEach((select) => {
+          select.innerHTML = "";
+          channels.forEach((ch) => {
+            const opt = document.createElement("option");
+            opt.value = ch.id;
+            opt.textContent = `#${ch.name}`;
+            select.appendChild(opt);
+          });
+        });
+      }
+
+      document.getElementById("qaForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const data = {
+          question: e.target.question.value,
+          answer: e.target.answer.value,
+        };
+        postJSON("/submit-qa", data);
+        e.target.reset();
+      });
+
+      document.getElementById("commandForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const data = {
+          command: e.target.command.value,
+          channelId: e.target.commandChannel.value,
+        };
+        postJSON("/send-command", data);
+        e.target.reset();
+      });
+
+      document.getElementById("renameForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const data = {
+          oldName: e.target.oldName.value,
+          newName: e.target.newName.value,
+          channelId: e.target.renameChannel.value,
+        };
+        postJSON("/rename-command", data);
+        e.target.reset();
+      });
+
+      function showStatus(message, isError) {
+        const status = document.getElementById("statusMessage");
+        status.innerHTML = `<span>${
+          isError ? "❌" : "✅"
+        }</span> <span>${message}</span>`;
+        status.style.display = "inline-flex";
+        status.style.background = isError ? "#dc3545" : "#28a745";
+        status.style.color = "#fff";
+        status.style.opacity = "1";
+
+        setTimeout(() => {
+          status.style.opacity = "0";
+          setTimeout(() => {
+            status.style.display = "none";
+            status.innerHTML = "";
+          }, 300);
+        }, 5000);
+      }
+
+      async function checkLogin() {
+        const res = await fetch("/channels");
+        const isLoggedIn = res.status === 200;
+
+        document.getElementById("authContent").style.display = isLoggedIn
+          ? "block"
+          : "none";
+        document.getElementById("loginBtn").style.display = isLoggedIn
+          ? "none"
+          : "inline";
+        document.getElementById("logoutBtn").style.display = isLoggedIn
+          ? "inline"
+          : "none";
+
+        if (isLoggedIn) {
+          const userRes = await fetch("/user");
+          const user = await userRes.json();
+
+          document.getElementById("userInfo").innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+              <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" 
+                   alt="avatar" width="32" height="32" style="border-radius: 50%;">
+              <strong>${user.username}#${user.discriminator}</strong>
+            </div>
+          `;
+        } else {
+          document.getElementById("userInfo").innerHTML = "";
+        }
+      }
+
+      window.onload = () => {
+        checkLogin();
+        loadChannels();
+      };
+    </script>
+  </body>
+</html>
