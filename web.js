@@ -30,6 +30,7 @@ passport.use(new DiscordStrategy({
     callbackURL: process.env.REDIRECT_URI || "http://localhost:3001/auth/discord/callback",
     scope: ["identify", "guilds", "guilds.members.read"]
 }, (accessToken, refreshToken, profile, done) => {
+    console.log("🚀 OAuth Callback URL:", process.env.REDIRECT_URI || "http://localhost:3001/auth/discord/callback");
     profile.accessToken = accessToken;
     return done(null, profile);
 }));
