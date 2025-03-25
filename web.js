@@ -27,12 +27,12 @@ passport.deserializeUser((obj, done) => done(null, obj));
 passport.use(new DiscordStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: '/auth/discord/callback',
-    scope: ['identify', 'guilds', 'guilds.members.read']
-}, (accessToken, refreshToken, profile, done) => {
+    callbackURL: process.env.REDIRECT_URI || "http://localhost:3001/auth/discord/callback",
+    scope: ["identify", "guilds", "guilds.members.read"]
+  }, (accessToken, refreshToken, profile, done) => {
     profile.accessToken = accessToken;
     return done(null, profile);
-}));
+  }));
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
