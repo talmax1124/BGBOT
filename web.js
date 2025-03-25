@@ -29,10 +29,12 @@ passport.use(new DiscordStrategy({
     clientSecret: process.env.CLIENT_SECRET,
     callbackURL: process.env.REDIRECT_URI || "http://localhost:3001/auth/discord/callback",
     scope: ["identify", "guilds", "guilds.members.read"]
-  }, (accessToken, refreshToken, profile, done) => {
+}, (accessToken, refreshToken, profile, done) => {
     profile.accessToken = accessToken;
     return done(null, profile);
-  }));
+}));
+
+console.log("Using Redirect URI:", process.env.REDIRECT_URI);
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -126,4 +128,4 @@ app.listen(PORT, () => {
 app.get('/user', (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send({ error: 'Not logged in' });
     res.send(req.user);
-  });
+});
