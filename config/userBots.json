@@ -1,0 +1,26 @@
+{
+  "bots": {
+    "1337211455262429214": {
+      "name": "BG BOT",
+      "clientId": "1354502557896016053",
+      "token": "MTM1NDUwMjU1Nzg5NjAxNjA1Mw.GLDVXh.IIZlecR8qWmvPOys3CH0GbDhrFE-kimvvIzwVQ",
+      "folder": "bgbot",
+      "commands": [
+        {
+          "name": "FAQ",
+          "description": "Submit and manage Frequently Asked Questions",
+          "enabled": true
+        },
+        {
+          "name": "Send Commands",
+          "description": "Send raw text commands directly to Discord",
+          "enabled": true
+        }
+      ],
+      "features": {
+        "tutorial": true,
+        "analytics": false
+      }
+    }
+  }
+}

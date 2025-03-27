@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - Your Bots Overview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  </head>
+  <body class="bg-gray-900 text-white">
+    <!-- Navbar -->
+    <nav class="bg-gray-800 p-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold">Creatives Duo BOT Service</h1>
+      <button
+        id="logoutBtn"
+        class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 transition"
+      >
+        Logout
+      </button>
+    </nav>
+
+    <main class="p-6">
+      <h2 class="text-2xl font-semibold mb-4">Your Bots</h2>
+      <p id="loadingBots" class="text-center text-gray-400 mb-4">
+        🔎 Loading bots linked to your Discord servers...
+      </p>
+      <div
+        id="botList"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6"
+      >
+        <!-- Bot Cards will be loaded here dynamically -->
+        <script>
+          fetch("/botlist")
+            .then((response) => response.json())
+            .then((data) => {
+              console.log("Fetching Bot List");
+              const botListContainer = document.getElementById("botList");
+              if (data.userBotsList && data.userBotsList.length > 0) {
+                data.userBotsList.forEach((bot) => {
+                  const botElement = document.createElement("div");
+                  botElement.classList.add(
+                    "bot-card",
+                    "bg-gray-800",
+                    "p-4",
+                    "rounded",
+                    "text-white"
+                  );
+                  botElement.innerHTML = `
+                    <h3 class="font-semibold text-lg">${bot.name}</h3>
+                    <p><strong>Client ID:</strong> ${bot.clientId}</p>
+                    <p><strong>Features:</strong> ${
+                      bot.features
+                        ? Object.keys(bot.features).join(", ")
+                        : "None"
+                    }</p>
+                    <button onclick="openFaqModal('${bot.clientId}', '${bot.guildId}')">Submit FAQ</button>
+                  `;
+                  botListContainer.appendChild(botElement);
+                });
+              } else {
+                const noBotsMessage = document.getElementById("noBotsMessage");
+                noBotsMessage.classList.remove("hidden");
+              }
+            })
+            .catch((error) => {
+              console.error("Error fetching bots:", error);
+              const errorMessage = document.getElementById("errorMessage");
+              errorMessage.classList.remove("hidden");
+            });
+        </script>
+      </div>
+      <p id="noBotsMessage" class="text-center text-yellow-400 hidden">
+        You don’t have any connected bots for servers you manage. Please add a
+        bot to get started!
+      </p>
+      <p id="errorMessage" class="text-center text-red-500 hidden">
+        Failed to load bot data. Please try again later.
+      </p>
+    </main>
+
+    <!-- Channel Selection for FAQ Modal -->
+    <section id="channelSelection" class="mt-10 hidden">
+      <h3 class="text-2xl font-bold text-cyan-400 mb-4 border-b border-cyan-400 pb-2">
+        Channels for <span id="tutorialBotName"></span>
+      </h3>
+      <ul id="channelList" class="list-disc ml-5 text-gray-300 space-y-1"></ul>
+    </section>
+
+    <div id="channelError" class="text-center text-red-500 hidden mt-4">
+      ⚠️ Failed to load channels. Please check your bot permissions or try again
+      later.
+    </div>
+
+    <!-- FAQ Modal -->
+    <div
+      id="faqModal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50"
+    >
+      <div class="bg-white text-black p-6 rounded-lg w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Submit FAQ</h3>
+        <form id="faqForm" onsubmit="submitFaq(event)">
+          <div class="mb-4">
+            <label class="block font-semibold">Question</label>
+            <input
+              type="text"
+              name="question"
+              class="w-full p-2 border rounded"
+              required
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block font-semibold">Answer</label>
+            <textarea
+              name="answer"
+              class="w-full p-2 border rounded"
+              required
+            ></textarea>
+          </div>
+          <div class="mb-4">
+            <label class="block font-semibold">Channel</label>
+            <select
+              name="channelId"
+              id="faqChannelSelect"
+              class="w-full p-2 border rounded"
+              required
+            >
+              <option value="" class="text-gray-500">
+                Select a channel...
+              </option>
+            </select>
+          </div>
+          <input type="hidden" name="clientId" id="faqClientId" />
+          <input type="hidden" name="guildId" id="faqGuildId" />
+          <div class="flex justify-between">
+            <button
+              type="submit"
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Submit
+            </button>
+            <button
+              type="button"
+              class="bg-gray-400 text-black px-4 py-2 rounded hover:bg-gray-500"
+              onclick="toggleFaqModal(false)"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="/js/dashboard.js"></script>
+    <script>
+      // This function will open the FAQ modal when the bot is selected
+      function openFaqModal(clientId, guildId) {
+        // Populate the modal with the bot's information
+        document.getElementById("faqClientId").value = clientId;
+        document.getElementById("faqGuildId").value = guildId;
+        document.getElementById("tutorialBotName").innerText = `Bot ${clientId}`;
+
+        // Show the modal
+        document.getElementById("faqModal").classList.remove("hidden");
+
+        // Fetch the channels for the selected bot's server
+        fetchChannels(guildId);
+      }
+
+      // Function to fetch channels for the selected bot
+      function fetchChannels(guildId) {
+        fetch(`/bot/${guildId}/channels`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch channels: ${response.statusText}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            const channelList = document.getElementById("channelList");
+            const faqChannelSelect = document.getElementById("faqChannelSelect");
+            channelList.innerHTML = "";
+            faqChannelSelect.innerHTML = "";
+      
+            if (data.channels && data.channels.length > 0) {
+              data.channels.forEach((channel) => {
+                const li = document.createElement("li");
+                li.textContent = channel.name;
+                channelList.appendChild(li);
+      
+                const option = document.createElement("option");
+                option.value = channel.id;
+                option.textContent = channel.name;
+                faqChannelSelect.appendChild(option);
+              });
+            } else {
+              const errorMessage = document.getElementById("channelError");
+              errorMessage.classList.remove("hidden");
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching channels:", error);
+            const errorMessage = document.getElementById("channelError");
+            errorMessage.classList.remove("hidden");
+          });
+      }
+
+      // Function to handle the FAQ submission
+      function submitFaq(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        fetch("/submit-faq", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert("FAQ submitted successfully!");
+              toggleFaqModal(false);
+            } else {
+              alert("Failed to submit FAQ. Please try again.");
+            }
+          })
+          .catch((error) => console.error("Error submitting FAQ:", error));
+      }
+
+      // Function to toggle the FAQ modal visibility
+      function toggleFaqModal(show) {
+        const modal = document.getElementById("faqModal");
+        if (show) {
+          modal.classList.remove("hidden");
+        } else {
+          modal.classList.add("hidden");
+        }
+      }
+    </script>
+
+    <footer class="text-center text-sm text-gray-500 mt-10 pb-6">
+      © 2025 Creatives Duo — Empowering your Discord automation.
+    </footer>
+  </body>
+</html>
